@@ -1,0 +1,28 @@
+APP:
+  name: exchange   #服务名称
+  ip: 127.0.0.1
+  port: 8080
+  mode: run   #运行模式
+  webIndex:   # web html目录
+  filePath:   #文件存放目录
+  staticFS:   #开启静态资源浏览，路径 /static。
+  saveFileMultiple: true                 # 文件是否保存为多份
+  fileDiskTotal: 50                   # 配置的网盘容量，单位 M
+
+
+MySQL:
+  driverName: mysql
+  host: 106.12.19.43
+  port: 6446
+  database: web_bucked
+  username: root
+  password: root
+  charset: utf8mb4
+
+Redis:
+  addr: 120.46.48.255
+  port: 6379
+  password:
+  db: 0
+  poolSize: 10
+  minIdleConns: 5

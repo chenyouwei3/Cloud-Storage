@@ -11,17 +11,9 @@ const routes = [
 		name:"login",
 		path:"/cloud_storage/login",
 		meta:{
-			title:"登录页面"
+			title:"账号登录"
 		},
 		component: () => import("@/views/login.vue")
-	},
-	{
-		name:"register",
-		path:"/cloud_storage/register",
-		meta:{
-			title:"注册页面"
-		},
-		component: () => import("@/views/register.vue")
 	},
 	{
 		name:"404",
@@ -30,6 +22,30 @@ const routes = [
 			title:"404"
 		},
 		component: () => import("@/views/404.vue")
+	},
+	{
+		name:"help-center",
+		path:"/help-center",
+		meta:{
+			title:"帮助中心"
+		},
+		component: () => import("@/views/help-center.vue")
+	},
+	{
+		name:"privacy-policy",
+		path:"/privacy-policy",
+		meta:{
+			title:"隐私政策"
+		},
+		component: () => import("@/views/privacy-policy.vue")
+	},
+	{
+		name:"terms-of-service",
+		path:"/terms-of-service",
+		meta:{
+			title:"服务条款"
+		},
+		component: () => import("@/views/terms-of-service.vue")
 	},
 	// 捕获所有未匹配的路由，重定向到 404 页面
 	{

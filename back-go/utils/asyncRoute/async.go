@@ -1,9 +1,14 @@
-package routers
+package asyncRoute
 
 import (
 	"gin-web/utils/extendController"
+	"gin-web/utils/task"
 	"github.com/gin-gonic/gin"
 	"sync"
+)
+
+var (
+	GinTaskQueue *task.TaskPool //gin协程池
 )
 
 type WaitConn struct {

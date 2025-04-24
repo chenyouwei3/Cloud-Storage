@@ -1,0 +1,14 @@
+# 忽略 back-go 下的 test0.go、batest1.go 和 data_init.go
+/back-go/test0.go
+/back-go/batest1.go
+/back-go/data_init.go
+
+# 忽略 back-go/initialize/config 目录下的 config.yaml
+/back-go/initialize/config/config.yaml
+
+# 忽略 back-go/cloud 目录下的所有内容
+/back-go/cloud/
+
+# 忽略 back-go/logs 目录下的所有内容
+/back-go/logs/
+

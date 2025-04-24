@@ -299,8 +299,8 @@ export default {
     const loadingLogin = ref(false);
 
     // 重定向路径
-    let redirect = ref('/cloud_storage/register');
-
+    let redirect = ref('/filecloud');
+/*--------------------------------- 注册 ---------------------------------*/
     // 处理注册
     const handleRegister = () => {
       smsFormModel.value.validate().then(() => {
@@ -318,8 +318,6 @@ export default {
           deletedRoles: []
         };
         register(registerData).then(res => {
-          console.log("res*",res)
-          console.log("====debug====",res.data.code,res.data.message?.['en-US'])
           if (res.data.code === 200 && res.data.message?.['en-US'] === "success") {
             message.success({
               content: '注册成功，即将跳转到登录页',
@@ -376,7 +374,7 @@ export default {
         });
       });
     };
-
+/*--------------------------------- 登录 ---------------------------------*/
     // 处理登录
     const handleLogin = () => {
       // 使用 validate() 返回的 Promise 进行表单验证
@@ -384,8 +382,12 @@ export default {
         // 表单校验成功，执行登录逻辑
         loadingLogin.value = true;
         login(loginInfo.value).then(ret => {
-            // 登录成功后，存储 Token
-            storage.set("Access-Token", ret.token, 8 * 60 * 60 * 1000); // 设置 token 存储
+            // 登录成功后，存储 Token 和用户信息
+            storage.set("Access-Token", ret.data.token, 8 * 60 * 60 * 1000); // 设置 token 存储
+            storage.set("User-Info", {
+              name: ret.data.data.user.name,
+              account: ret.data.data.user.account
+            }, 8 * 60 * 60 * 1000); // 存储用户信息
             // 延时跳转到目标页面
             setTimeout(() => {
               loadingLogin.value = false;

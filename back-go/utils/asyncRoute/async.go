@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	GinTaskQueue *task.TaskPool //gin协程池
+	GinTaskQueue = task.NewTaskPool(1, 1024) //gin协程池
 )
 
 type WaitConn struct {

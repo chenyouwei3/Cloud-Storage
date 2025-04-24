@@ -4,19 +4,20 @@ import (
 	"errors"
 	"fmt"
 	mysqlDB "gin-web/initialize/mysql"
-	"gorm.io/gorm"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type User struct {
 	Id         int64     `json:"id" gorm:"column:id;type:bigint;primaryKey;not null"`
-	Name       string    `json:"name" gorm:"column:name;type:varchar(20);not null"`         //用户名
-	Account    string    `json:"account" gorm:"column:account;type:varchar(20);not null"`   //账号
-	Password   string    `json:"password" gorm:"column:password;type:varchar(20);not null"` //密码
+	Name       string    `json:"name" gorm:"column:name;type:varchar(35);not null"`         //用户名
+	Account    string    `json:"account" gorm:"column:account;type:varchar(35);not null"`   //账号
+	Password   string    `json:"password" gorm:"column:password;type:varchar(35);not null"` //密码
 	AvatarUrl  string    `json:"avatarUrl" gorm:"column:avatarUrl;type:varchar(50)"`        //头像Url
 	Sex        string    `json:"sex" gorm:"column:sex;type:varchar(3);not null"`            //性别
-	Email      string    `json:"email" gorm:"column:email;type:varchar(20);not null"`       //邮箱
-	Salt       string    `json:"salt" gorm:"column:salt;type:varchar(20);not null"`         //盐加密
+	Email      string    `json:"email" gorm:"column:email;type:varchar(35);not null"`       //邮箱
+	Salt       string    `json:"salt" gorm:"column:salt;type:varchar(35);not null"`         //盐加密
 	CreateTime time.Time `json:"createTime" gorm:"column:createTime;autoCreateTime"`        //创建time
 	UpdateTime time.Time `json:"updateTime" gorm:"column:updateTime;default:(-)"`           //修改time
 	Roles      []Role    `gorm:"many2many:user_roles"`                                      //外键role
@@ -94,17 +95,26 @@ func (u *User) Update(addRoles, deletedRoles []int) error {
 	return err
 }
 
-func (u *User) GetAll(skip, limit int, startTime, endTime string) ([]User, error) {
+func (u *User) GetOne(account, username string) (*User, error) {
+	var user User
+	err := mysqlDB.DB.Model(&User{}).Where("account = ? OR name= ?", account, username).Take(&user).Error
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (u *User) GetAll(skip, limit int, startTime, endTime string) (*[]User, error) {
 	tx := mysqlDB.DB
 	if startTime != "" && endTime != "" {
 		tx = tx.Where("createTime >= ? and createTime <=?", startTime, endTime)
 	}
 	var resDB []User
-	res := tx.Model(&User{}).Limit(limit).Offset(skip).Find(&resDB)
+	res := tx.Model(&User{}).Limit(limit).Offset(skip).Find(resDB)
 	if res.Error != nil {
 		return nil, res.Error
 	}
-	return resDB, nil
+	return &resDB, nil
 }
 
 func (u *User) IsExist() (bool, error) {

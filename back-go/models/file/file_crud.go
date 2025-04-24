@@ -2,9 +2,11 @@ package file
 
 import (
 	"fmt"
+	conf "gin-web/initialize/config"
 	"gin-web/initialize/runLog"
 	"gin-web/utils"
 	"io"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -35,14 +37,11 @@ func (this *fileInfo) makeChild(name string, isDir bool) (*fileInfo, error) {
 // 参数说明	filePath(要查找的目录路径)  mkdir(ture不存在的时候创建,false不存在返回错误)
 
 func (this *fileInfo) FindDir(filePath string, mkdir bool) (*fileInfo, error) {
-	//去除多余的/
 	paths := strings.Split(path.Clean(filePath), "/")
-	//遍历路径，查找目录
 	info := this
 	for i := 1; i < len(paths); i++ {
 		dirName := paths[i]
-		cInfo, ok := info.FileInfos[dirName] //在当前目录的子目录 map 中查找目标目录
-		//查看是否同名
+		cInfo, ok := info.FileInfos[dirName]
 		if ok {
 			if !cInfo.IsDir {
 				return nil, fmt.Errorf("已存在同名文件")
@@ -109,7 +108,7 @@ func (this *fileInfo) mergeUpload() {
 	this.FileUpload = nil
 
 	addMD5File(this.FileMD5, this)
-	calUsedDisk()
+	CalUsedDisk()
 }
 
 // 回调函数,使所有文件夹都执行某个函数
@@ -141,7 +140,7 @@ func walk(info *fileInfo, f func(file *fileInfo) error) (err error) {
 }
 
 // 计算出磁盘的使用情况
-func calUsedDisk() {
+func CalUsedDisk() {
 	used := uint64(0)
 	walk(FilePtr.FileInfo, func(file *fileInfo) error {
 		if !file.IsDir && file.FileSize != 0 {
@@ -153,7 +152,7 @@ func calUsedDisk() {
 }
 
 // 文件删除，
-func remove(parent *fileInfo, name string) error {
+func Remove(parent *fileInfo, name string) error {
 	info, ok := parent.FileInfos[name]
 	if !ok {
 		return fmt.Errorf("%s 文件不存在", name)
@@ -162,7 +161,7 @@ func remove(parent *fileInfo, name string) error {
 	// 遍历文件
 	if err := walk(info, func(file *fileInfo) error {
 		if !file.IsDir && file.FileMD5 != "" { //不是文件夹并且md5不为0
-			if !saveFileMultiple {
+			if !SaveFileMultiple {
 				if md5File_, ok := FilePtr.MD5Files[file.FileMD5]; ok {
 					if md5File_.File == file.AbsPath {
 						// 此文件为源文件
@@ -183,7 +182,7 @@ func remove(parent *fileInfo, name string) error {
 	//从该文件当中删除其子文件
 	delete(parent.FileInfos, info.Name)
 	//防止文件多处访问
-	if !saveFileMultiple {
+	if !SaveFileMultiple {
 		// 文件夹中包含源文件需要拷贝到他处
 		for md5 := range delMd5 {
 			md5File_, ok := FilePtr.MD5Files[md5]
@@ -197,6 +196,7 @@ func remove(parent *fileInfo, name string) error {
 	}
 
 	// 删除文件、文件夹
+
 	if err := os.RemoveAll(info.AbsPath); err != nil {
 		return err
 	}
@@ -205,7 +205,7 @@ func remove(parent *fileInfo, name string) error {
 }
 
 // 拷贝到目标目录下
-func copy2(src, destParent *fileInfo, destName string) error {
+func Copy2(src, destParent *fileInfo, destName string) error {
 	srcPath := path.Join(src.Path, src.Name)
 	return walk(src, func(file *fileInfo) error {
 		var fileName string
@@ -229,8 +229,6 @@ func copy2(src, destParent *fileInfo, destName string) error {
 			}
 
 			fileName = file.Name
-
-			//fmt.Println(22222, filePath, srcPath, revPath, fileName)
 			if dirInfo, err = destParent.FindDir(revPath, true); err != nil {
 				return err
 			}
@@ -238,15 +236,17 @@ func copy2(src, destParent *fileInfo, destName string) error {
 		}
 
 		if newInfo, err = dirInfo.makeChild(fileName, file.IsDir); err != nil {
+
 			return err
 		}
 		//fmt.Println(srcPath, file.Path, file.Name, newInfo.Path, newInfo.Name)
 		if !file.IsDir && file.FileMD5 != "" {
-			if saveFileMultiple {
+			if SaveFileMultiple {
 				// 真实保存,拷贝文件
 				files, _ := FilePtr.MD5Files[file.FileMD5]
 				//logger.Info(files, newInfo)
 				if _, err := utils.CopyFile(files.Ptr[0], newInfo.AbsPath); err != nil {
+
 					return err
 				}
 			}
@@ -262,7 +262,8 @@ func copy2(src, destParent *fileInfo, destName string) error {
 }
 
 // 这个函数 loadFilePath 的作用是加载指定目录的文件结构，并构建文件信息映射，包括文件的路径、大小、MD5、修改时间等信息，同时清理上传的分片文件
-func loadFilePath(filePath string) {
+
+func LoadFilePath(filePath string) {
 	// 规范化文件路径，去除多余的 `/` 和 `..`
 	filePath = path.Clean(filePath)
 
@@ -333,5 +334,38 @@ func loadFilePath(filePath string) {
 	}))
 
 	// 计算磁盘使用情况
-	calUsedDisk()
+	CalUsedDisk()
+}
+
+func cleanEmptyDirs() error {
+	// 读取 basePath 目录下的所有文件或文件夹
+	entries, err := ioutil.ReadDir(conf.Conf.APP.FilePath)
+	if err != nil {
+		return fmt.Errorf("无法读取目录: %w", err)
+	}
+
+	for _, entry := range entries {
+		// 只处理文件夹
+		if entry.IsDir() {
+			subDirPath := filepath.Join(conf.Conf.APP.FilePath, entry.Name())
+			// 读取子目录中的内容
+			subEntries, err := ioutil.ReadDir(subDirPath)
+			if err != nil {
+				fmt.Printf("无法读取子目录 %s: %v\n", subDirPath, err)
+				continue
+			}
+
+			// 如果子目录为空，则删除它
+			if len(subEntries) == 0 {
+				err := os.Remove(subDirPath)
+				if err != nil {
+					fmt.Printf("删除空目录 %s 失败: %v\n", subDirPath, err)
+				} else {
+					fmt.Printf("已删除空目录: %s\n", subDirPath)
+				}
+			}
+		}
+	}
+
+	return nil
 }

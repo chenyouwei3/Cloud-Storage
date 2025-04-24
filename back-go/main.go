@@ -3,11 +3,8 @@ package main
 import (
 	"gin-web/initialize/cacheRedis"
 	"gin-web/initialize/config"
-	"gin-web/initialize/file"
 	mysqlDB "gin-web/initialize/mysql"
 	"gin-web/initialize/runLog"
-	"gin-web/models"
-	"gin-web/models/authcCenter"
 	"gin-web/routers"
 	"github.com/gin-gonic/gin"
 	_ "net/http/pprof"
@@ -36,17 +33,16 @@ func init() {
 		panic(err)
 	}
 	//数据库迁移
-	if err = mysqlDB.DB.AutoMigrate(&authcCenter.User{}, &authcCenter.Role{}, &authcCenter.Api{}, &models.OperationLog{}); err != nil {
-		panic(err)
-	}
-	file.InitFilePath(config.Conf.APP.FilePath) //初始化文件存储
-	//pprof检测程序性能
-	//go func() {
-	//	log.Println(http.ListenAndServe("127.0.0.1:6066", nil))
-	//}()
+	//if err = mysqlDB.DB.AutoMigrate(&authcCenter.User{}, &authcCenter.Role{}, &authcCenter.Api{}, &models.OperationLog{}); err != nil {
+	//	panic(err)
+	//}
+	//file.LoadFilePath(config.Conf.APP.FilePath)
 }
 
 func main() {
 	routers.RouterServer() //http服务
-
+	//err := dist_storage.RenameFileOrDir("../cloud/外文翻译.pdf", "../cloud/翻译.pdf")
+	//if err != nil {
+	//	fmt.Println("错误:", err)
+	//}
 }

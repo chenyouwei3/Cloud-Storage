@@ -1,6 +1,9 @@
-package utils
+package task
 
-import "reflect"
+import (
+	"gin-web/utils"
+	"reflect"
+)
 
 //参数explain
 //fn：传入的函数，可以是任何函数类型,它的类型是 interface{}，表示可以是任意类型的函数。
@@ -9,7 +12,7 @@ import "reflect"
 
 func CallFunc(fn interface{}, args ...interface{}) (result []interface{}, err error) {
 	//捕获异常
-	defer func() { err = Recover() }()
+	defer func() { err = utils.Recover() }()
 	fnType := reflect.TypeOf(fn)   //获取传入的函数的类型信息
 	fnValue := reflect.ValueOf(fn) //获取传日函数的值信息
 	numIn := fnType.NumIn()        //获取该函数的如参数量(函数参数个数)

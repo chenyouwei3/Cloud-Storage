@@ -9,7 +9,7 @@ type DefaultController struct {
 	extendController.BaseController
 }
 
-// HandleNotFound 404处理
+// HandleNotFound 405处理
 func (d DefaultController) HandleNotFound(c *gin.Context) {
-	d.SendNotFoundResponse(c)
+	d.SendMethodNotAllowedResponse(c)
 }

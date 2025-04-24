@@ -1,11 +1,13 @@
 package file
 
+import "gin-web/utils"
+
 var (
 	FilePtr *fileInfos
 	//saveFileMultiple == true：多个文件可以共享相同的 MD5 文件，不会重复存储相同内容的文件，节省存储空间。
 	//saveFileMultiple == false：每个文件都单独存储，即使内容相同，也会创建物理副本，不共享 MD5 文件，保证独立性。
-	saveFileMultiple = true
-	fileDiskTotal    = 50 // 默认50M
+	SaveFileMultiple = true
+	FileDiskTotal    = 50 * utils.MB // 默认50M
 )
 
 // 文件信息管理

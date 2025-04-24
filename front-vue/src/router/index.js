@@ -47,6 +47,22 @@ const routes = [
 		},
 		component: () => import("@/views/terms-of-service.vue")
 	},
+	{
+		name:"filecloud",
+		path:"/filecloud",
+		meta:{
+			title:"个人网盘"
+		},
+		component: () => import("@/views/filecloud.vue")
+	},
+	{
+		name:"visualization",
+		path:"/visualization",
+		meta:{
+			title:"数据可视化"
+		},
+		component: () => import("@/views/visualization.vue")
+	},
 	// 捕获所有未匹配的路由，重定向到 404 页面
 	{
 		path: "/:pathMatch(.*)*",

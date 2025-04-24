@@ -1,7 +1,6 @@
 package task
 
 import (
-	"gin-web/utils"
 	"runtime"
 	"sync"
 )
@@ -16,7 +15,7 @@ type funcTask struct {
 }
 
 func (this *funcTask) Do() {
-	_, _ = utils.CallFunc(this.fn, this.args...)
+	_, _ = CallFunc(this.fn, this.args...)
 }
 
 var (

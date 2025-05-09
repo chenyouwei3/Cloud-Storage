@@ -1,15 +1,16 @@
 package controller
 
 import (
-	"errors"
-	"gin-web/initialize/runLog"
+	"fmt"
 	"gin-web/models/dist_storage"
 	"gin-web/utils/asyncRoute"
 	"gin-web/utils/extendController"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -25,40 +26,41 @@ type distRequest struct {
 func (d *DistStorageController) List(wait *asyncRoute.WaitConn) {
 	//线程池复用wait
 	defer func() { wait.Done() }()
-	Path := wait.Ctx.DefaultQuery("path", "../cloud")
+	var FilterArr []string
+	Path := wait.Ctx.Query("path")
+	Filter := wait.Ctx.Query("filter")
+	if Filter != "" {
+		FilterArr = strings.Split(Filter, ",")
+	}
 	if Path == "" {
-		runLog.ZapLog.Info("参数错误-绑定")
-		wait.SetResult("参数错误-绑定", "Parameter Error - Binding", http.StatusBadRequest, nil)
+		wait.SetResultByFront(4001, nil)
 		return
 	}
-	result, err := dist_storage.GetDirInfoWithTree(Path)
+	result, err := dist_storage.GetDirInfoWithTree(Path, FilterArr)
 	if err != nil {
-		runLog.ZapLog.Info("获取数据失败" + err.Error())
-		wait.SetResult("获取数据失败", err.Error(), http.StatusBadRequest, nil)
+		wait.SetCustomResultByBacked("获取数据失败", "Failed to retrieve data", err)
 		return
 	}
-	wait.SetResult("请求成功", "success", http.StatusOK, result)
+	wait.SetSuccessResult(result)
+
 }
 
 func (d *DistStorageController) Mkdir(wait *asyncRoute.WaitConn) {
 	defer func() { wait.Done() }()
 	var req distRequest
 	if err := wait.Ctx.BindJSON(&req); err != nil {
-		runLog.ZapLog.Info("参数绑定错误" + err.Error())
-		wait.SetResult("参数绑定错误", err.Error(), http.StatusBadRequest, nil)
+		wait.SetResultByFront(4002, err)
 		return
 	}
 	if req.Path == "" {
-		runLog.ZapLog.Info("参数错误-参数绑定错误")
-		wait.SetResult("参数错误,参数绑定错误", "query is nil", http.StatusBadRequest, nil)
+		wait.SetResultByFront(4001, nil)
 		return
 	}
 	if err := dist_storage.MakeDir(req.Path); err != nil {
-		runLog.ZapLog.Info("创建文件夹失败" + err.Error())
-		wait.SetResult("创建文件夹失败", err.Error(), http.StatusBadRequest, nil)
+		wait.SetCustomResultByBacked("创建文件夹失败", "Failed to create folder", err)
 		return
 	}
-	wait.SetResult("请求成功", "success", http.StatusOK, nil)
+	wait.SetSuccessResult(nil)
 }
 
 func (d *DistStorageController) ReName(wait *asyncRoute.WaitConn) {
@@ -68,13 +70,11 @@ func (d *DistStorageController) ReName(wait *asyncRoute.WaitConn) {
 		NewPath string `json:"newPath"`
 	}
 	if err := wait.Ctx.BindJSON(&req); err != nil {
-		runLog.ZapLog.Info("参数错误,file绑定错误" + err.Error())
-		wait.SetResult("参数错误,file绑定错误", err.Error(), http.StatusBadRequest, nil)
+		wait.SetResultByFront(4002, err)
 		return
 	}
 	if req.OldPath == "" || req.NewPath == "" {
-		runLog.ZapLog.Info("参数错误,file参数为空")
-		wait.SetResult("参数错误,file参数为空", "query is nil", http.StatusBadRequest, nil)
+		wait.SetResultByFront(4001, nil)
 		return
 	}
 
@@ -82,11 +82,10 @@ func (d *DistStorageController) ReName(wait *asyncRoute.WaitConn) {
 		return
 	}
 	if err := dist_storage.RenameFileOrDir(req.OldPath, req.NewPath); err != nil {
-		runLog.ZapLog.Info("重命名失败" + err.Error())
-		wait.SetResult("重命名失败", "Failed to retrieve data"+err.Error(), http.StatusBadRequest, nil)
+		wait.SetCustomResultByBacked("重命名失败", "Rename failed", err)
 		return
 	}
-	wait.SetResult("请求成功", "success", http.StatusOK, nil)
+	wait.SetSuccessResult(nil)
 }
 
 func (d *DistStorageController) Remove(wait *asyncRoute.WaitConn) {
@@ -95,45 +94,39 @@ func (d *DistStorageController) Remove(wait *asyncRoute.WaitConn) {
 		DistsPath []string `json:"distsPath"`
 	}
 	if err := wait.Ctx.BindJSON(&req); err != nil {
-		runLog.ZapLog.Info("参数错误,file绑定错误" + err.Error())
-		wait.SetResult("参数错误,file绑定错误", err.Error(), http.StatusBadRequest, nil)
+		wait.SetResultByFront(4002, err)
 		return
 	}
 	if len(req.DistsPath) == 0 {
-		runLog.ZapLog.Info("参数错误,file参数为空")
-		wait.SetResult("参数错误,file参数为空", "query is nil", http.StatusBadRequest, nil)
+		wait.SetResultByFront(4001, nil)
 		return
 	}
 	for _, filename := range req.DistsPath {
 		if err := dist_storage.RemoveFileOrDir(filename); err != nil {
-			runLog.ZapLog.Info("删除文件错误" + err.Error())
-			wait.SetResult("删除文件错误", err.Error(), http.StatusBadRequest, nil)
+			wait.SetCustomResultByBacked("删除文件错误", "Delete file/folder error", err)
 			return
 		}
 	}
-	wait.SetResult("请求成功", "success", http.StatusOK, nil)
+	wait.SetSuccessResult(nil)
 }
 
 func (d *DistStorageController) Copy(wait *asyncRoute.WaitConn) {
 	defer func() { wait.Done() }()
 	var req distRequest
 	if err := wait.Ctx.BindJSON(&req); err != nil {
-		runLog.ZapLog.Info("参数错误,file绑定错误" + err.Error())
-		wait.SetResult("参数错误,file绑定错误", err.Error(), http.StatusBadRequest, nil)
+		wait.SetResultByFront(4002, err)
 		return
 	}
 	if req.Path == "" {
-		runLog.ZapLog.Info("参数错误,file参数为空")
-		wait.SetResult("参数错误,file参数为空", "query is nil", http.StatusBadRequest, nil)
+		wait.SetResultByFront(4001, nil)
 		return
 	}
 	//处理路径
 	if err := dist_storage.CopyFileOrDir(req.Path, addCopy(req.Path)); err != nil {
-		runLog.ZapLog.Info("复制文件/文件夹" + err.Error())
-		wait.SetResult("复制文件/文件夹", err.Error(), http.StatusBadRequest, nil)
+		wait.SetCustomResultByBacked("复制文件/文件夹", "Copy files/folders", err)
 		return
 	}
-	wait.SetResult("请求成功", "success", http.StatusOK, nil)
+	wait.SetSuccessResult(nil)
 }
 
 func addCopy(path string) string {
@@ -153,21 +146,18 @@ func (d *DistStorageController) Move(wait *asyncRoute.WaitConn) {
 		NewPath string `json:"newPath"`
 	}
 	if err := wait.Ctx.BindJSON(&req); err != nil {
-		runLog.ZapLog.Info("参数错误,file绑定错误" + err.Error())
-		wait.SetResult("参数错误,file绑定错误", err.Error(), http.StatusBadRequest, nil)
+		wait.SetResultByFront(4002, err)
 		return
 	}
 	if req.OldPath == "" || req.NewPath == "" {
-		runLog.ZapLog.Info("参数错误,file参数为空")
-		wait.SetResult("参数错误,file参数为空", "query is nil", http.StatusBadRequest, nil)
+		wait.SetResultByFront(4001, nil)
 		return
 	}
 	if err := dist_storage.MoveFile(req.OldPath, req.NewPath); err != nil {
-		runLog.ZapLog.Info("创建文件夹失败" + err.Error())
-		wait.SetResult("创建文件夹失败", err.Error(), http.StatusBadRequest, nil)
+		wait.SetCustomResultByBacked("创建文件夹失败", "Failed to create folder", err)
 		return
 	}
-	wait.SetResult("请求成功", "success", http.StatusOK, nil)
+	wait.SetSuccessResult(nil)
 }
 
 func (d *DistStorageController) DropdownMenu(wait *asyncRoute.WaitConn) {
@@ -175,105 +165,191 @@ func (d *DistStorageController) DropdownMenu(wait *asyncRoute.WaitConn) {
 	Path := wait.Ctx.DefaultQuery("path", "../cloud")
 	Query := wait.Ctx.DefaultQuery("query", " ")
 	if Path == "" || Query == "" {
-		runLog.ZapLog.Info("参数错误,menu绑定错误")
-		wait.SetResult("参数错误,menu绑定错误", "query is nil", http.StatusBadRequest, nil)
+		wait.SetResultByFront(4001, nil)
 		return
 	}
 	switch Query {
 	case "move":
 		res, err := dist_storage.DirMapping(Path)
 		if err != nil {
-			runLog.ZapLog.Info("获取文件夹列表失败" + err.Error())
-			wait.SetResult("获取文件夹列表失败", err.Error(), http.StatusBadRequest, nil)
+			wait.SetCustomResultByBacked("获取文件夹列表失败", "Failed to retrieve folder list", err)
 			return
 		}
-		wait.SetResult("请求成功", "success", http.StatusOK, res)
+		wait.SetSuccessResult(res)
 	default:
-		runLog.ZapLog.Info("参数错误,参数为空")
-		wait.SetResult("参数错误,参数为空", "query is nil", http.StatusBadRequest, nil)
-		return
+		wait.SetSuccessResult("query类型不匹配")
 	}
 }
 
 func (d *DistStorageController) DownLoad(c *gin.Context) {
 	var req distRequest
 	if err := c.BindJSON(&req); err != nil {
-		d.SendParameterErrorResponse(c, err)
+		d.SendParameterErrorResponse(c, 4002, err)
 		return
 	}
+
 	// 确保文件存在
 	if _, err := os.Stat(req.Path); os.IsNotExist(err) {
-		d.SendNotFoundResponse(c, err)
+		d.SendServerErrorResponse(c, 5101, err)
 		return
 	}
-	// 获取文件名
+
+	// 获取文件名和扩展名
 	filename := filepath.Base(req.Path)
+	ext := strings.ToLower(filepath.Ext(filename))
+
+	// 设置正确的 MIME 类型
+	mimeTypes := map[string]string{
+		".pdf":  "application/pdf",
+		".doc":  "application/msword",
+		".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+		".xls":  "application/vnd.ms-excel",
+		".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+		".ppt":  "application/vnd.ms-powerpoint",
+		".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+		".jpg":  "image/jpeg",
+		".jpeg": "image/jpeg",
+		".png":  "image/png",
+		".gif":  "image/gif",
+		".bmp":  "image/bmp",
+		".txt":  "text/plain",
+		".zip":  "application/zip",
+		".rar":  "application/x-rar-compressed",
+		".7z":   "application/x-7z-compressed",
+	}
+	contentType := mimeTypes[ext]
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
 	// 设置响应头
-	c.Header("Content-Disposition", "attachment; filename="+filename)
-	c.Header("Content-Type", "application/octet-stream")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+	c.Header("Content-Type", contentType)
 	c.Header("Access-Control-Expose-Headers", "Content-Disposition")
-	// 返回文件内容
+	// 直接发送文件
+	c.File(req.Path)
 	d.SendSuccessResponse(c, "success")
 }
 
 func (d *DistStorageController) Upload(c *gin.Context) {
 	path := c.PostForm("path")
 	if path == "" {
-		d.SendParameterErrorResponse(c, errors.New("path 参数为空"))
+		d.SendParameterErrorResponse(c, 4001, nil)
 		return
 	}
 	file, err := c.FormFile("file")
 	if err != nil {
-		d.SendCustomResponse(c, "获取文件失败", "Failed to retrieve file", err)
+		d.SendCustomResponseByFront(c, "获取文件失败", "Failed to retrieve file", err)
 		return
 	}
 	savePath := filepath.Join(path, file.Filename)
 	if err := c.SaveUploadedFile(file, savePath); err != nil {
-		d.SendCustomResponse(c, "保存文件失败", "Failed to save file", err)
+		d.SendCustomResponseByBacked(c, "保存文件失败", "Failed to save file", err)
 		return
 	}
 	d.SendSuccessResponse(c, "success")
 }
 
-func (d *DistStorageController) Category(c *gin.Context) {
-	var req distRequest
-	if err := c.BindJSON(&req); err != nil {
-		d.SendParameterErrorResponse(c, err)
+func (d *DistStorageController) Category(wait *asyncRoute.WaitConn) {
+	defer func() { wait.Done() }()
+	Path := wait.Ctx.Query("path")
+	if Path == "" {
+		wait.SetResultByFront(4001, nil)
 		return
 	}
-	// 大小,数量,时间
-	typeSize, typeNumber, typeTime := make(map[string]float64), make(map[string]int), make(map[string]int) // 大小
-	var totalSize float64 = 0
-	if err := filepath.Walk(req.Path, func(path string, info os.FileInfo, err error) error {
+	var totalSize float64 = 0 // 文件总大小
+	// 文件类型的大小/文件类型的数量/ 最近7天的数量和大小
+	typeSize, typeNumber, recentlySize, recentlyNumber := make(map[string]float64), make(map[string]int), [7]float64{}, [7]int{}
+	now := time.Now()
+	startTimes := make([]time.Time, 7)
+	for i := 0; i < 7; i++ {
+		startTimes[i] = now.AddDate(0, 0, -(6 - i)) // 从6天前到今天
+	}
+	if err := filepath.Walk(Path, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		// 跳过目录
-		if info.IsDir() {
+		if info.IsDir() { // 跳过目录
 			return nil
 		}
 		ext := strings.ToLower(filepath.Ext(info.Name()))
-
-		sizeMB := float64(info.Size()) / (1024 * 1024) // 字节转 MB，保留小数
-		typeSize[ext] += sizeMB                        //统计大小
-		typeNumber[ext]++                              //统计种类
-		typeTime[info.ModTime().Format("2006-01-02")]++
-		totalSize += sizeMB //总大小
-
+		sizeMB := float64(info.Size()) / (1024 * 1024)      // 字节转MB
+		sizeMB = math.Round(sizeMB*100) / 100               // 保留两位小数
+		typeSize[ext] += sizeMB                             // 统计类型大小
+		typeSize[ext] = math.Round(typeSize[ext]*100) / 100 // 再保留两位
+		typeNumber[ext]++                                   // 统计种类数量
+		totalSize += sizeMB                                 // 总大小
+		totalSize = math.Round(totalSize*100) / 100         // 保留两位
+		modTime := info.ModTime()
+		for i := 0; i < 7; i++ {
+			dayStart := time.Date(startTimes[i].Year(), startTimes[i].Month(), startTimes[i].Day(), 0, 0, 0, 0, startTimes[i].Location())
+			dayEnd := dayStart.AddDate(0, 0, 1)
+			if modTime.After(dayStart) && modTime.Before(dayEnd) {
+				recentlyNumber[i]++                                     // 当天的文件数量+1
+				recentlySize[i] += sizeMB                               // 当天的文件大小+文件大小
+				recentlySize[i] = math.Round(recentlySize[i]*100) / 100 // 保留两位
+				break
+			}
+		}
 		return nil
 	}); err != nil {
-		d.SendCustomResponse(c, "获取磁盘资源失败", "Failed to retrieve disk resources", err)
+		wait.SetCustomResultByBacked("获取磁盘资源失败", "Failed to retrieve disk resources", err)
 		return
 	}
-	d.SendSuccessResponse(c, struct {
-		Total  float64            `json:"total"`
-		Size   map[string]float64 `json:"size"`
-		Number map[string]int     `json:"number"`
-		Time   map[string]int     `json:"time"`
+	wait.SetSuccessResult(struct {
+		Total          float64            `json:"total"`
+		Size           map[string]float64 `json:"size"`
+		Number         map[string]int     `json:"number"`
+		RecentlyNumber [7]int             `json:"recently_number"`
+		RecentlySize   [7]float64         `json:"recently_size"`
 	}{
 		totalSize,
 		typeSize,
 		typeNumber,
-		typeTime,
+		recentlyNumber,
+		recentlySize,
 	})
+}
+
+func (d *DistStorageController) OnlinePreview(c *gin.Context) {
+	path := c.Query("name")
+	if path == "" {
+		d.SendParameterErrorResponse(c, 4001, nil)
+		return
+	}
+
+	// 文件路径示例：假设你文件都存在某目录
+	fullPath := filepath.Join("/your/file/storage", path)
+
+	// 判断文件是否存在
+	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+		c.String(http.StatusNotFound, "文件不存在")
+		return
+	}
+
+	// 获取文件扩展名
+	ext := strings.ToLower(filepath.Ext(path))
+
+	// 设置 Content-Type
+	mimeType := map[string]string{
+		".pdf":  "application/pdf",
+		".doc":  "application/msword",
+		".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+		".xls":  "application/vnd.ms-excel",
+		".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+		".ppt":  "application/vnd.ms-powerpoint",
+		".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+		".jpg":  "image/jpeg",
+		".jpeg": "image/jpeg",
+		".png":  "image/png",
+		".gif":  "image/gif",
+		".bmp":  "image/bmp",
+	}
+	contentType := mimeType[ext]
+	if contentType == "" {
+		contentType = "application/octet-stream" // 如果未知类型，默认用 octet-stream
+	}
+	c.Header("Content-Type", contentType) // 设置头
+	c.Header("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", filepath.Base(path)))
+	// 读取并返回文件内容
+	c.File(fullPath)
 }

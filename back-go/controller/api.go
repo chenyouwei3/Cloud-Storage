@@ -1,94 +1,104 @@
 package controller
 
 import (
-	"errors"
 	"gin-web/models/authcCenter"
 	"gin-web/utils"
 	"gin-web/utils/extendController"
-	"github.com/gin-gonic/gin"
 	"strconv"
+
+	"github.com/gin-gonic/gin"
 )
 
 type ApiController struct {
 	extendController.BaseController
 }
 
-func (a *ApiController) Add(c *gin.Context) {
-	//接收参数并校验
+func (a *ApiController) Insert(c *gin.Context) {
+	//参数校验
 	var api authcCenter.Api
 	if err := c.Bind(&api); err != nil {
-		a.SendParameterErrorResponse(c, err)
+		a.SendParameterErrorResponse(c, 4002, err)
 		return
 	}
 	if api.Method != "POST" && api.Method != "GET" && api.Method != "DELETE" && api.Method != "PUT" {
-		a.SendParameterErrorResponse(c, nil)
+		a.SendParameterErrorResponse(c, 4003, nil)
 		return
 	}
+	//DB操作
 	isExist, err := api.IsExist()
 	if isExist || err != nil {
-		a.SendDataDuplicationResponse(c, err)
+		a.SendServerErrorResponse(c, 5101, err)
 		return
 	}
-	if err = api.Add(); err != nil {
-		a.SendCustomResponse(c, "添加api失败", "add api failed", err)
+	if err = api.Insert(); err != nil {
+		a.SendServerErrorResponse(c, 5100, err)
 		return
 	}
 	a.SendSuccessResponse(c, "success")
 }
 
-func (a *ApiController) Deleted(c *gin.Context) {
-	//接收参数并校验
+func (a *ApiController) Remove(c *gin.Context) {
+	//参数校验
 	id := c.Query("id")
 	if id == "" {
-		a.SendParameterErrorResponse(c, errors.New("参数错误,id为空"))
+		a.SendParameterErrorResponse(c, 4001, nil)
 		return
 	}
 	idInt64, err := strconv.ParseInt(id, 10, 64)
 	if err != nil {
-		a.SendParameterErrorResponse(c, errors.New("id转化错误为空"))
+		a.SendCustomResponseByBacked(c, "参数格式转化错误", "Parameter format conversion error", err)
 		return
 	}
-	//基于model
-	if err := new(authcCenter.Api).Deleted(idInt64); err != nil {
-		a.SendCustomResponse(c, "删除api失败", "deleted api failed", err)
+	//DB操作
+	if err := new(authcCenter.Api).Remove(idInt64); err != nil {
+		a.SendServerErrorResponse(c, 5110, err)
 		return
 	}
 	a.SendSuccessResponse(c, "success")
 }
 
-func (a *ApiController) Update(c *gin.Context) {
-	//接收参数并校验
+func (a *ApiController) Edit(c *gin.Context) {
+	//参数校验
 	var api authcCenter.Api
 	if err := c.Bind(&api); err != nil {
-		a.SendParameterErrorResponse(c, err)
+		a.SendParameterErrorResponse(c, 4002, err)
 		return
 	}
 	if api.Method != "POST" && api.Method != "GET" && api.Method != "DELETE" && api.Method != "PUT" {
-		a.SendParameterErrorResponse(c, nil)
+		a.SendParameterErrorResponse(c, 4003, nil)
 		return
 	}
-	if err := api.Update(); err != nil {
-		a.SendCustomResponse(c, "更新api失败", "update api failed", err)
+	//DB操作
+	if err := api.Edit(); err != nil {
+		a.SendServerErrorResponse(c, 5120, err)
 		return
 	}
 	a.SendSuccessResponse(c, "success")
 }
 
-func (a *ApiController) GetAll(c *gin.Context) {
-	//接收参数并校验
+// 查询
+func (a *ApiController) GetList(c *gin.Context) {
+	//参数校验
 	var api authcCenter.Api
 	api.Name, api.Url = c.Query("name"), c.Query("url")
 	currPage, pageSize := c.DefaultQuery("currPage", "1"), c.DefaultQuery("pageSize", "10")
 	startTime, endTime := c.Query("startTime"), c.Query("endTime")
 	skip, limit, err := utils.GetPage(currPage, pageSize)
 	if err != nil {
-		a.SendParameterErrorResponse(c, err)
+		a.SendCustomResponseByBacked(c, "分页失败", "Paging failed", err)
 		return
 	}
-	resDB, err := new(authcCenter.Api).GetAll(skip, limit, startTime, endTime)
+	//DB操作
+	resDB, count, err := api.GetList(skip, limit, startTime, endTime)
 	if err != nil {
-		a.SendCustomResponse(c, "查询api失败", "find api failed", err)
+		a.SendServerErrorResponse(c, 5130, err)
 		return
 	}
-	a.SendSuccessResponse(c, resDB)
+	a.SendSuccessResponse(c, struct {
+		Logs  []authcCenter.Api `json:"apis"`
+		Total int64             `json:"total"`
+	}{
+		resDB,
+		count,
+	})
 }

@@ -1,7 +1,6 @@
-import  request  from './request'; 
+import { axios as request } from './request'; 
 
-
-/*----------------------------------user---------------------------------*/
+/*----------------------------------权限中心---------------------------------*/
 export function login(parameter){
     return request({
         url: "/login",
@@ -18,15 +17,46 @@ export function register(parameter){
     })
 }
 
-/*----------------------------------dist---------------------------------*/
-export function distList(parameter) {
-    // 将参数转换为查询字符串
-    const queryString = new URLSearchParams(parameter).toString();
-
+export function  apiList(parameter){
+    const queryString = new URLSearchParams(parameter).toString(); 
     return request({
-        url: `/dist/list?${queryString}`, // 在 URL 中拼接查询字符串
-        method: 'get', // 使用 GET 请求
-        // data: parameter // 不需要传递 data 字段，GET 请求参数已经通过查询字符串传递
+        url: `/api/getAll?${queryString}`, 
+        method: 'get',
+    });
+}
+
+export function roleList(parameter){
+    const queryString = new URLSearchParams(parameter).toString(); 
+    return request({
+        url: `/role/getAll?${queryString}`, 
+        method: 'get', 
+    });
+}
+
+export function userList(parameter){
+    const queryString = new URLSearchParams(parameter).toString(); 
+    return request({
+        url: `/user/getAll?${queryString}`, 
+        method: 'get', 
+    });
+}
+
+
+/*----------------------------------日志中心---------------------------------*/
+export function getOperationLog(parameter){
+    const queryString = new URLSearchParams(parameter).toString();    // 将参数转换为查询字符串
+    return request({
+        url: `/log/operation/getAll?${queryString}`,
+        method: 'get'
+    })
+}
+
+/*----------------------------------文件云盘---------------------------------*/
+export function distList(parameter) {
+    const queryString = new URLSearchParams(parameter).toString(); 
+    return request({
+        url: `/dist/list?${queryString}`, 
+        method: 'get',
     });
 }
 
@@ -38,7 +68,6 @@ export function distMkdir(parameter){
     })
 }
 
-
 export function distRename (parameter) {
     return request({
         url: "/dist/rename",
@@ -46,7 +75,6 @@ export function distRename (parameter) {
         data: parameter
     })
 }
-
 
 export function distRemove (parameter) {
     return request({
@@ -64,7 +92,6 @@ export function distCopy (parameter) {
     })
 }
 
-
 export function distMove (parameter) {
     return request({
         url: "/dist/move",
@@ -73,16 +100,11 @@ export function distMove (parameter) {
     })
 }
 
-
-
-export function DropdownMenu(parameter) {
-    // 将参数转换为查询字符串
-    const queryString = new URLSearchParams(parameter).toString();
-
+export function distDropdownMenu(parameter) {
+    const queryString = new URLSearchParams(parameter).toString();   
     return request({
-        url: `/dist/dropdownMenu?${queryString}`, // 在 URL 中拼接查询字符串
-        method: 'get', // 使用 GET 请求
-        // data: parameter // 不需要传递 data 字段，GET 请求参数已经通过查询字符串传递
+        url: `/dist/dropdownMenu?${queryString}`, 
+        method: 'get', 
     });
 }
 
@@ -90,7 +112,8 @@ export function distDownload(parameter){
     return request({
         url: "/dist/download",
         method: 'post',
-        data: parameter
+        data: parameter,
+        responseType: 'blob'  // 添加这个配置以正确处理二进制响应
     })
 }
 
@@ -98,7 +121,6 @@ export function distUpload(file, path) {
   const formData = new FormData()
   formData.append('file', file)        // 这是上传的文件
   formData.append('path', path)        // 这是文件要保存的路径
-
   return request({
     url: "/dist/upload",
     method: 'post',
@@ -109,3 +131,10 @@ export function distUpload(file, path) {
   })
 }
 
+export function distCategory(parameter) {
+    const queryString = new URLSearchParams(parameter).toString(); 
+    return request({
+        url: `/dist/category?${queryString}`, 
+        method: 'get', 
+    });
+}

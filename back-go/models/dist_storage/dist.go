@@ -7,39 +7,43 @@ import (
 	"strings"
 )
 
+// distInfos 用于封装目录信息和树结构
 type distInfos struct {
-	DefaultPath string               `json:"defaultPath"`
-	TotalDist   string               `json:"totalDist"`
-	Item        map[string]*distInfo `json:"item"`
-	Tree        *TreeNode            `json:"tree"`
+	DefaultPath string               `json:"defaultPath"` // 根目录路径
+	TotalDist   string               `json:"totalDist"`   // 总大小，格式化后的字符串
+	Item        map[string]*distInfo `json:"item"`        // 文件/目录的详细信息映射
+	Tree        *TreeNode            `json:"tree"`        // 目录树结构
 }
 
+// distInfo 表示单个文件或目录的信息
 type distInfo struct {
-	IsDir bool   `json:"isDir"`
-	Size  string `json:"size"`
-	Date  string `json:"date"`
+	IsDir bool   `json:"isDir"` // 是否为目录
+	Size  string `json:"size"`  // 大小，格式化后的字符串
+	Date  string `json:"date"`  // 最后修改时间，格式化后的字符串
 }
 
+// TreeNode 用于表示目录树节点
 type TreeNode struct {
-	Name     string      `json:"name"`
-	Children []*TreeNode `json:"children,omitempty"`
+	Name     string      `json:"name"`               // 节点名称，对应文件或目录名
+	Children []*TreeNode `json:"children,omitempty"` // 子节点列表，使用omitempty避免空 slice 输出
 }
 
 // 获取目录信息和树结构
-func GetDirInfoWithTree(rootPath string) (*distInfos, error) {
+func GetDirInfoWithTree(rootPath string, fileTypes []string) (*distInfos, error) {
+	// 用于存放每个相对路径对应distinfo
 	items := make(map[string]*distInfo)
+	// totalSize 用于累加所有文件大小，目录通过递归计算
 	var totalSize int64
 
 	err := filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
+		//查找文件类型
+		if err != nil || (len(fileTypes) > 0 && !isValidFileType(path, fileTypes)) {
 			return nil
 		}
-
 		relPath, _ := filepath.Rel(filepath.Dir(rootPath), path)
 		if relPath == "." {
 			relPath = info.Name()
 		}
-
 		var size int64
 		if info.IsDir() {
 			size = calcDirSize(path)
@@ -59,7 +63,7 @@ func GetDirInfoWithTree(rootPath string) (*distInfos, error) {
 		return nil, err
 	}
 
-	tree := buildTreeFromPath(rootPath)
+	tree := buildTreeFromPath(rootPath, fileTypes)
 
 	return &distInfos{
 		DefaultPath: rootPath,
@@ -70,16 +74,14 @@ func GetDirInfoWithTree(rootPath string) (*distInfos, error) {
 }
 
 // 构建目录树结构（修复了重复节点问题）
-func buildTreeFromPath(root string) *TreeNode {
-	tree := &TreeNode{Name: filepath.Base(filepath.Dir(root))}
+func buildTreeFromPath(root string, fileTypes []string) *TreeNode {
 	rootNode := &TreeNode{Name: filepath.Base(root)}
-	tree.Children = []*TreeNode{rootNode}
-
 	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
+		if err != nil || (len(fileTypes) > 0 && !isValidFileType(path, fileTypes)) {
 			return nil
 		}
-		relPath, _ := filepath.Rel(filepath.Dir(root), path)
+		/* relPath, _ := filepath.Rel(filepath.Dir(root), path) */
+		relPath, _ := filepath.Rel(root, path)
 		if relPath == "." {
 			return nil
 		}
@@ -88,8 +90,7 @@ func buildTreeFromPath(root string) *TreeNode {
 		insertPath(rootNode, parts)
 		return nil
 	})
-
-	return tree
+	return rootNode
 }
 
 // 将路径按层级插入树节点中，避免重复
@@ -113,6 +114,16 @@ func insertPath(current *TreeNode, parts []string) {
 	}
 
 	insertPath(child, parts[1:])
+}
+
+// 判断文件后缀是否在 fileTypes 中
+func isValidFileType(path string, fileTypes []string) bool {
+	for _, fileType := range fileTypes {
+		if strings.HasSuffix(path, "."+fileType) {
+			return true
+		}
+	}
+	return false
 }
 
 // 递归计算目录大小

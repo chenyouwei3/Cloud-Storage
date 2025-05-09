@@ -18,12 +18,46 @@ type User struct {
 	Sex        string    `json:"sex" gorm:"column:sex;type:varchar(3);not null"`            //性别
 	Email      string    `json:"email" gorm:"column:email;type:varchar(35);not null"`       //邮箱
 	Salt       string    `json:"salt" gorm:"column:salt;type:varchar(35);not null"`         //盐加密
-	CreateTime time.Time `json:"createTime" gorm:"column:createTime;autoCreateTime"`        //创建time
+	CreateTime time.Time `json:"createTime" gorm:"column:createTime;autoCreateTime;index"`  //创建time
 	UpdateTime time.Time `json:"updateTime" gorm:"column:updateTime;default:(-)"`           //修改time
 	Roles      []Role    `gorm:"many2many:user_roles"`                                      //外键role
 }
 
-func (u *User) Add(roleIds []int) error {
+// 查询
+func (u *User) GetList(skip, limit int, startTime, endTime string) ([]User, int64, error) {
+	//总数
+	var total int64
+	countTx := mysqlDB.DB.Model(&User{})
+	if startTime != "" && endTime != "" {
+		countTx = countTx.Where("createTime >= ? AND createTime <= ?", startTime, endTime)
+	}
+	if u.Name != "" {
+		countTx = countTx.Where("name = ?", u.Name)
+	}
+	if err := countTx.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	//子查询
+	subQuery := mysqlDB.DB.Model(&User{}).Select("id").Order("createTime DESC")
+	if startTime != "" && endTime != "" {
+		subQuery = subQuery.Where("createTime >= ? AND createTime <= ?", startTime, endTime)
+	}
+	if u.Name != "" {
+		subQuery = subQuery.Where("name = ?", u.Name)
+	}
+	subQuery = subQuery.Offset(skip).Limit(limit)
+	var resDB []User
+	if err := mysqlDB.DB.Model(&User{}).
+		//Select("id", "ip", "name", "url", "method", "desc", "createTime", "updateTime").
+		Joins("JOIN (?) AS tmp ON tmp.id = user.id", subQuery).
+		Order("createTime DESC").
+		Find(&resDB).Error; err != nil {
+		return nil, 0, err
+	}
+	return resDB, total, nil
+}
+
+func (u *User) Insert(roleIds []int) error {
 	u.CreateTime = time.Now()
 	return mysqlDB.DB.Transaction(func(tx *gorm.DB) error {
 		res := tx.Create(u)
@@ -47,7 +81,7 @@ func (u *User) Add(roleIds []int) error {
 	})
 }
 
-func (u *User) Deleted(id int64) error {
+func (u *User) Remove(id int64) error {
 	//删除role,受制于user/api
 	return mysqlDB.DB.Transaction(func(tx *gorm.DB) error {
 		// 清除 User 与 Roles 的关联关系
@@ -64,7 +98,7 @@ func (u *User) Deleted(id int64) error {
 	})
 }
 
-func (u *User) Update(addRoles, deletedRoles []int) error {
+func (u *User) Edit(addRoles, deletedRoles []int) error {
 	u.UpdateTime = time.Now()
 	err := mysqlDB.DB.Transaction(func(tx *gorm.DB) error {
 		//更新用户基本信息
@@ -102,19 +136,6 @@ func (u *User) GetOne(account, username string) (*User, error) {
 		return nil, err
 	}
 	return &user, nil
-}
-
-func (u *User) GetAll(skip, limit int, startTime, endTime string) (*[]User, error) {
-	tx := mysqlDB.DB
-	if startTime != "" && endTime != "" {
-		tx = tx.Where("createTime >= ? and createTime <=?", startTime, endTime)
-	}
-	var resDB []User
-	res := tx.Model(&User{}).Limit(limit).Offset(skip).Find(resDB)
-	if res.Error != nil {
-		return nil, res.Error
-	}
-	return &resDB, nil
 }
 
 func (u *User) IsExist() (bool, error) {

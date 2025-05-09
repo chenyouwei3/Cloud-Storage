@@ -3,8 +3,7 @@ package utils
 import "strconv"
 
 func GetPage(currPage, pageSize string) (int, int, error) {
-	//当前页码,每页大小
-	curr, err := strconv.Atoi(currPage)
+	curr, err := strconv.Atoi(currPage) //当前页码,每页大小
 	if err != nil {
 		return 0, 0, err
 	}

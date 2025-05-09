@@ -209,232 +209,132 @@
   </div>
 </template>
 
-<script>
-import storage from 'store'   //本地存储
-import { login, register } from '@/tools/api'; // 引入登录接口
-import { 
-  UserOutlined, 
-  LockOutlined, 
-  WechatOutlined, 
-  QqOutlined,
-  MobileOutlined,
-  SafetyOutlined,
-  MailOutlined,
-  TwitterOutlined,
-  InstagramOutlined,
-  GoogleOutlined,
-  FacebookOutlined,
-  GithubOutlined
-} from '@ant-design/icons-vue';   //引入ant-design-vue 图标
+<script setup>
+import storage from 'store'   
+import { login, register } from '@/tools/api'; 
+import { msgSuccess,msgError } from '@/tools/message';
+import { UserOutlined, LockOutlined, WechatOutlined, QqOutlined,MobileOutlined,SafetyOutlined,MailOutlined,TwitterOutlined,InstagramOutlined,GoogleOutlined,FacebookOutlined,GithubOutlined} from '@ant-design/icons-vue';   
 import { ref } from 'vue';  
 import { useRouter } from 'vue-router'
-import { message } from 'ant-design-vue';
+const activeTab = ref('password');
 
-export default {
-  components: {
-    UserOutlined,
-    LockOutlined,
-    WechatOutlined,
-    QqOutlined,
-    MobileOutlined,
-    SafetyOutlined,
-    MailOutlined,
-    TwitterOutlined,
-    InstagramOutlined,
-    GoogleOutlined,
-    FacebookOutlined,
-    GithubOutlined
-  },
-  setup() {
-    const activeTab = ref('password');
-    const countdown = ref(0);
-    
-    // 初始化用户信息
-    const loginInfo = ref({
-      account: "",
-      password: ""
-    })
-
-    const smsInfo = ref({
-      email: "",
-      password: "",
-      confirmPassword: ""
-    })
-
-    const router = useRouter()
-    // 表单验证规则
-    const rules = {
-      account: [{ required: true, message: '用户名必填', trigger: 'blur' }],
-      password: [{ required: true, message: '密码必填', trigger: 'blur' }]
+/*--------------------------------- 全局变量 ---------------------------------*/
+const router = useRouter()
+// 表单验证规则
+const rules = {
+  account: [{ required: true, message: '用户名必填', trigger: 'blur' }],
+  password: [{ required: true, message: '密码必填', trigger: 'blur' }]
+}
+const smsRules = {
+  email: [
+    { required: true, type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
+  ],
+  password: [
+    { required: true, min: 6, message: '密码必填且不能少于6位', trigger: 'blur' }
+  ],
+  confirmPassword: [
+    { required: true, message: '请确认密码', trigger: 'blur' },
+    {
+      validator: (_, value) => 
+        value !== smsInfo.value.password 
+          ? Promise.reject('两次输入的密码不一致') 
+          : Promise.resolve(),
+      trigger: 'blur'
     }
+  ]
+}
+/* [处理注册]
+@handleRegister 注册
+*/
+const smsFormModel = ref(null);// 表单引用
+const smsInfo = ref({email: "",password: "",confirmPassword: ""})//注册信息
+const loadingLogin = ref(false);// 登录请求加载状态
 
-    const smsRules = {
-      email: [
-        { required: true, message: '邮箱必填', trigger: 'blur' },
-        { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
-      ],
-      password: [
-        { required: true, message: '密码必填', trigger: 'blur' },
-        { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
-      ],
-      confirmPassword: [
-        { required: true, message: '请确认密码', trigger: 'blur' },
-        {
-          validator: (rule, value) => {
-            if (value !== smsInfo.value.password) {
-              return Promise.reject('两次输入的密码不一致');
-            }
-            return Promise.resolve();
-          },
-          trigger: 'blur'
-        }
-      ]
-    }
-
-    // 表单引用
-    const loginFormModel = ref(null);
-    const smsFormModel = ref(null);
-
-    // 登录请求加载状态
-    const loadingLogin = ref(false);
-
-    // 重定向路径
-    let redirect = ref('/filecloud');
-/*--------------------------------- 注册 ---------------------------------*/
-    // 处理注册
-    const handleRegister = () => {
-      smsFormModel.value.validate().then(() => {
-        loadingLogin.value = true;
-        const { email, password } = smsInfo.value;
-        const registerData = {
-          user: {
-            name: email.split('@')[0], // 使用邮箱前缀作为用户名
-            account: email,
-            password: password,
-            email: email,
-            desc: "通过邮箱注册的用户"
-          },
-          addRoles: [2],
-          deletedRoles: []
-        };
-        register(registerData).then(res => {
-          if (res.data.code === 200 && res.data.message?.['en-US'] === "success") {
-            message.success({
-              content: '注册成功，即将跳转到登录页',
-              duration: 2,
-              style: {
-                marginTop: '20vh',
-                fontSize: '16px',
-                color: '#52c41a'
-              }
-            });
-            // 注册成功后自动切换到登录页
-            setTimeout(() => {
-              activeTab.value = 'password';
-              // 清空注册表单
-              smsInfo.value = {
-                email: "",
-                password: "",
-                confirmPassword: ""
-              };
-            }, 1000); // 等待提示消息显示2秒后再切换
-          } else {
-            message.error({
-              content: res.message?.['zh-CN'] || '注册失败，请检查输入信息',
-              duration: 3,
-              style: {
-                marginTop: '20vh',
-                fontSize: '16px',
-                color: '#ff4d4f'
-              }
-            });
-          }
-        }).catch(err => {
-          message.error({
-            content: '注册失败，请稍后重试',
-            duration: 3,
-            style: {
-              marginTop: '20vh',
-              fontSize: '16px',
-              color: '#ff4d4f'
-            }
-          });
-        }).finally(() => {
-          loadingLogin.value = false;
-        });
-      }).catch(error => {
-        message.error({
-          content: '请检查表单填写是否正确',
-          duration: 3,
-          style: {
-            marginTop: '20vh',
-            fontSize: '16px',
-            color: '#ff4d4f'
-          }
-        });
-      });
+const handleRegister = async () => {
+  try {
+    await smsFormModel.value.validate();  // 校验表单
+    loadingLogin.value = true;
+    const { email, password } = smsInfo.value;
+    const registerData = {
+      user: {name: email.split('@')[0], // 使用邮箱前缀作为用户名
+        account: email,
+        password: password,
+        email: email,
+        desc: "通过邮箱注册的用户"
+      },
+      addRoles: [2],
+      deletedRoles: []
     };
-/*--------------------------------- 登录 ---------------------------------*/
-    // 处理登录
-    const handleLogin = () => {
-      // 使用 validate() 返回的 Promise 进行表单验证
-      loginFormModel.value.validate().then(() => {
-        // 表单校验成功，执行登录逻辑
-        loadingLogin.value = true;
-        login(loginInfo.value).then(ret => {
-            // 登录成功后，存储 Token 和用户信息
-            storage.set("Access-Token", ret.data.token, 8 * 60 * 60 * 1000); // 设置 token 存储
-            storage.set("User-Info", {
-              name: ret.data.data.user.name,
-              account: ret.data.data.user.account
-            }, 8 * 60 * 60 * 1000); // 存储用户信息
-            // 延时跳转到目标页面
-            setTimeout(() => {
-              loadingLogin.value = false;
-              // 跳转到目标页面
-              router.push({ path: redirect.value});
-            }, 500);
-          })
-          .catch(error => {
-            // 登录失败
-            console.log("登录失败error:",error)
-            loadingLogin.value = false;
-          });
-      }).catch(error => {
-        // 表单验证失败，error 包含验证错误
-        console.log("表单验证失败", error);
-      });
-    };
+    const res=await register(registerData);   // 发起注册请求
+    if (res?.data?.message['en-US']=="success"){
+      setTimeout(() => {   // 延迟跳转
+        activeTab.value = 'password';  //切换代码框
+        smsInfo.value = {
+          email: "",
+          password: "",
+          confirmPassword: ""
+        };}, 1000);
+    }  
+  } finally {
+    loadingLogin.value = false;
+  }
+};
 
-    return {
-      activeTab,
-      loginInfo,
-      smsInfo,
-      rules,
-      smsRules,
-      loadingLogin,
-      countdown,
-      loginFormModel,
-      smsFormModel,
-      redirect,
-      UserOutlined,
-      LockOutlined,
-      WechatOutlined,
-      QqOutlined,
-      MobileOutlined,
-      SafetyOutlined,
-      MailOutlined,
-      TwitterOutlined,
-      InstagramOutlined,
-      GoogleOutlined,
-      FacebookOutlined,
-      GithubOutlined,
-      handleLogin,
-      handleRegister
-    };
+/* [登录]
+@handleLogin 登录页面
+*/
+const loginFormModel = ref(null);// 表单引用
+const loginInfo = ref({account: "",password: ""})//初始化用户信息
+
+const handleLogin = async () => {
+  try {
+    await loginFormModel.value.validate();
+    loadingLogin.value = true;
+    const ret = await login(loginInfo.value);
+    storage.set("Access-Token", ret.data.token, 8 * 60 * 60 * 1000);
+    storage.set("User-Info", {name: ret.data.data.user.name,account: ret.data.data.user.account}, 8 * 60 * 60 * 1000);
+    setTimeout(() => {
+      loadingLogin.value = false;
+      router.push('/file-cloud');
+    }, 500);
+  } catch (error) {
+    loadingLogin.value = false;
   }
 };
 </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 <style scoped>
 .login-page {

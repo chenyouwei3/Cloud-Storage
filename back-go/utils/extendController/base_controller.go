@@ -3,8 +3,9 @@ package extendController
 import (
 	"fmt"
 	"gin-web/initialize/runLog"
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 type BaseController struct {
@@ -12,71 +13,62 @@ type BaseController struct {
 
 func (b *BaseController) SendResponse(c *gin.Context, httpResponseCode, CustomCode int, msg ResponseMsg, data interface{}, err error) {
 	if err != nil {
-		// 追加错误信息到原有的 msg.ZhCn 和 msg.EnUs 上
-		msg.ZhCn = fmt.Sprintf("%s : %v", msg.ZhCn, err)
 		msg.EnUs = fmt.Sprintf("%s : %v", msg.EnUs, err)
+		runLog.ZapLog.Error(msg.ZhCn + "/|^_^|/" + msg.EnUs) //定义日志输出格式
+	} else {
 		runLog.ZapLog.Info(msg.ZhCn + "/|^_^|/" + msg.EnUs) //定义日志输出格式
 	}
-	c.JSON(httpResponseCode, Response{ //http码
-		Code:    CustomCode,
-		Message: msg,  //错误信息还是正确信息
-		Data:    data, //数据
+
+	c.JSON(httpResponseCode, Response{
+		Code:    CustomCode, //自定义错误码
+		Message: msg,        //错误信息还是正确信息
+		Data:    data,       //数据
 	})
 }
 
-// 成功200
+// 成功
 func (b *BaseController) SendSuccessResponse(c *gin.Context, data interface{}) {
-	b.SendResponse(c, http.StatusOK, Normal, ResponseMsg{
+	b.SendResponse(c, http.StatusOK, 2000, ResponseMsg{
 		ZhCn: "请求成功",
 		EnUs: "success",
 	}, data, nil)
-
 }
 
-// 自定义错误
-func (b *BaseController) SendCustomResponse(c *gin.Context, ZhCn, EnUs string, err error) {
-	b.SendResponse(c, http.StatusOK, Normal, ResponseMsg{
+// 客户端自定义错误
+func (b *BaseController) SendCustomResponseByFront(c *gin.Context, ZhCn, EnUs string, err error) {
+	b.SendResponse(c, http.StatusBadRequest, 4000, ResponseMsg{
 		ZhCn: ZhCn,
 		EnUs: EnUs,
 	}, nil, err)
 }
 
-// 参数错误400
-func (b *BaseController) SendParameterErrorResponse(c *gin.Context, err error) {
-	b.SendResponse(c, http.StatusBadRequest, ParameterError, ResponseMsg{
-		ZhCn: "参数错误",
-		EnUs: "parameter error",
+// 服务端自定义错误
+func (b *BaseController) SendCustomResponseByBacked(c *gin.Context, ZhCn, EnUs string, err error) {
+	b.SendResponse(c, http.StatusOK, 5000, ResponseMsg{
+		ZhCn: ZhCn,
+		EnUs: EnUs,
 	}, nil, err)
 }
 
-// 权限问题401
-func (b *BaseController) SendUnAuthResponse(c *gin.Context) {
-	b.SendResponse(c, http.StatusUnauthorized, Unauthorized, ResponseMsg{
-		ZhCn: "身份信息不通过",
-		EnUs: "Identity information not passed",
-	}, nil, nil)
+// 客户端参数错误
+func (b *BaseController) SendParameterErrorResponse(c *gin.Context, CustomCode int, err error) {
+	b.SendResponse(c, http.StatusBadRequest, CustomCode, ErrorCodeMap[CustomCode], nil, err)
 }
 
-// 文件不存在404
-func (b *BaseController) SendNotFoundResponse(c *gin.Context, err error) {
-	b.SendResponse(c, http.StatusNotFound, NotFound, ResponseMsg{
-		ZhCn: "文件不存在",
-		EnUs: "File does not exist",
-	}, nil, err)
+// 服务端错误代码
+func (b *BaseController) SendServerErrorResponse(c *gin.Context, CustomCode int, err error) {
+	b.SendResponse(c, http.StatusOK, CustomCode, ErrorCodeMap[CustomCode], nil, err)
 }
 
 // 方法不允许405
 func (b *BaseController) SendMethodNotAllowedResponse(c *gin.Context) {
-	b.SendResponse(c, http.StatusMethodNotAllowed, NotFound, ResponseMsg{
+	b.SendResponse(c, http.StatusMethodNotAllowed, 405, ResponseMsg{
 		ZhCn: "方法不允许",
 		EnUs: "Method not allow",
 	}, nil, nil)
 }
 
-// 重复问题409
-func (b *BaseController) SendDataDuplicationResponse(c *gin.Context, err error) {
-	b.SendResponse(c, http.StatusConflict, Unauthorized, ResponseMsg{
-		ZhCn: "数据重复",
-		EnUs: "Data duplication",
-	}, nil, err)
+// 请求过多429
+func (b *BaseController) SendTooManyResponse(c *gin.Context, err error) {
+	b.SendResponse(c, http.StatusTooManyRequests, 4290, ErrorCodeMap[4290], nil, err)
 }

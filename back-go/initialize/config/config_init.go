@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"github.com/spf13/viper"
 	"os"
 )
@@ -16,6 +17,7 @@ func InitConfig() error {
 	}
 	err = viper.Unmarshal(&Conf)
 	if err != nil {
+		fmt.Println("testing", err)
 		return err
 	}
 	return nil
@@ -25,15 +27,13 @@ var Conf = Config{}
 
 type Config struct {
 	APP struct {
-		Name             string
-		IP               string
-		Port             int
-		Mode             string
-		WebIndex         string
-		FilePath         string
-		StaticFS         string
-		SaveFileMultiple bool
-		FileDiskTotal    int
+		Name     string
+		IP       string
+		Port     int
+		Mode     string
+		WebIndex string
+		FilePath string
+		StaticFS bool
 	}
 	MySQL struct {
 		DriverName string `yaml:"driverName"`

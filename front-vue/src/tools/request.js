@@ -1,12 +1,11 @@
 import axios from 'axios';
-import { VueAxios } from './axios'; // 引入 VueAxios 插件
-import { message } from 'ant-design-vue'; // 使用 ant-design-vue 的 message 组件显示错误信息
-import storage from 'store'; // 使用 localStorage 封装库
-
+import storage from 'store'; 
+import { msgSuccess,msgError } from './message'; 
+import { VueAxios } from './axios'; 
 // 创建 axios 实例
 const request = axios.create({
   baseURL: "http://localhost:8080", // 正确的 API 地址
-  timeout: 6000,
+  timeout: 5000, //请求超时时间
 });
 
 // 异常拦截处理器
@@ -14,7 +13,7 @@ const errorHandler = (error) => {
   if (error.response) {
     if (error.response.status === 401) {//返回响应错误处理
       // 如果是 401 错误（授权失败）
-      message.error('授权验证失败'); // 提示用户授权失败
+      msgError('授权验证失败'); // 提示用户授权失败
       const token = storage.get('Access-Token'); // 获取存储中的 token
       if (token) {
         storage.remove('Access-Token'); // 从本地存储清除 token
@@ -23,11 +22,13 @@ const errorHandler = (error) => {
         window.location.reload(); // 刷新页面
       }, 1000);
     } else {
-      message.error(error.response.statusText); // 显示其他错误
+      msgError(error.response.statusText); // 显示其他错误
     }
   }
   return Promise.reject(error); // 返回拒绝的 promise
 };
+
+
 
 // 请求拦截器
 request.interceptors.request.use(
@@ -44,16 +45,12 @@ request.interceptors.request.use(
 // 响应拦截器
 request.interceptors.response.use(
   (response) => {
-    if ('success' in response.data) {
-      if (!response.data.success) {
-        message.error(response.data.message); // 如果接口返回 success 为 false
-        return Promise.reject(response); // 返回拒绝的 promise
-      } else {
-        return response.data.data; // 返回数据部分
-      }
+   /*  if (response.data.message['en-US'] == 'success')  {
+      msgSuccess(response.data.message['zh-CN']);
     } else {
-      return response; // 如果没有 success 字段，直接返回响应
-    }
+      msgError(response.data.message['zh-CN']);
+    } */
+    return response; // 如果没有 success 字段，直接返回响应
   },
   errorHandler // 如果响应发生错误，调用 errorHandler
 );

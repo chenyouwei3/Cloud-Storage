@@ -68,6 +68,7 @@ func MoveFile(sourcePath, targetPath string) error {
 	return nil
 }
 
+// 下拉菜单 - 只返回文件夹的路径
 func DirMapping(Path string) ([]string, error) {
 	var folders []string
 

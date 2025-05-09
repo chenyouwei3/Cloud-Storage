@@ -4,22 +4,57 @@ import (
 	"errors"
 	"fmt"
 	mysqlDB "gin-web/initialize/mysql"
-	"gorm.io/gorm"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type Role struct {
 	Id         int64     `json:"id" gorm:"column:id;type:bigint;primaryKey;not null"`
-	Name       string    `json:"name" gorm:"column:name;type:varchar(20);not null"`  //用户名
-	Desc       string    `json:"desc" gorm:"column:desc;type:varchar(20)"`           //描述
-	CreateTime time.Time `json:"createTime" gorm:"column:createTime;autoCreateTime"` //创建time
-	UpdateTime time.Time `json:"updateTime" gorm:"column:updateTime;default:NULL"`   //修改time
+	Name       string    `json:"name" gorm:"column:name;type:varchar(20);not null"`        //角色名称
+	Desc       string    `json:"desc" gorm:"column:desc;type:varchar(20)"`                 //详情描述
+	CreateTime time.Time `json:"createTime" gorm:"column:createTime;autoCreateTime;index"` //创建time
+	UpdateTime time.Time `json:"updateTime" gorm:"column:updateTime;default:NULL"`         //修改time
 	Users      []User    `gorm:"many2many:user_roles"`
 	Apis       []Api     `gorm:"many2many:role_apis;"`
 }
 
+// 查询
+func (r *Role) GetList(skip, limit int, startTime, endTime string) ([]Role, int64, error) {
+	//总数
+	var total int64
+	countTx := mysqlDB.DB.Model(&Role{})
+	if startTime != "" && endTime != "" {
+		countTx = countTx.Where("createTime >= ? AND createTime <= ?", startTime, endTime)
+	}
+	if r.Name != "" {
+		countTx = countTx.Where("name = ?", r.Name)
+	}
+	if err := countTx.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	//子查询
+	subQuery := mysqlDB.DB.Model(&Role{}).Select("id").Order("createTime DESC")
+	if startTime != "" && endTime != "" {
+		subQuery = subQuery.Where("createTime >= ? AND createTime <= ?", startTime, endTime)
+	}
+	if r.Name != "" {
+		subQuery = subQuery.Where("name = ?", r.Name)
+	}
+	subQuery = subQuery.Offset(skip).Limit(limit)
+	var resDB []Role
+	if err := mysqlDB.DB.Model(&Role{}).
+		//Select("id", "ip", "name", "url", "method", "desc", "createTime", "updateTime").
+		Joins("JOIN (?) AS tmp ON tmp.id = role.id", subQuery).
+		Order("createTime DESC").
+		Find(&resDB).Error; err != nil {
+		return nil, 0, err
+	}
+	return resDB, total, nil
+}
+
 // 添加Role
-func (r *Role) Add(apiIds []int) error {
+func (r *Role) Insert(apiIds []int) error {
 	r.CreateTime = time.Now()
 	return mysqlDB.DB.Transaction(func(tx *gorm.DB) error {
 		// 创建 Role 记录
@@ -45,7 +80,7 @@ func (r *Role) Add(apiIds []int) error {
 }
 
 // 删除Role
-func (r *Role) Deleted(id int64) error {
+func (r *Role) Remove(id int64) error {
 	//删除role,受制于user/api
 	return mysqlDB.DB.Transaction(func(tx *gorm.DB) error {
 		// 清除 Api 与 Roles 的关联关系
@@ -62,7 +97,7 @@ func (r *Role) Deleted(id int64) error {
 	})
 }
 
-func (r *Role) Update(addApis, deletedApis []int) error {
+func (r *Role) Edit(addApis, deletedApis []int) error {
 	r.UpdateTime = time.Now()
 	err := mysqlDB.DB.Transaction(func(tx *gorm.DB) error {
 		// 更新角色基本信息
@@ -91,19 +126,6 @@ func (r *Role) Update(addApis, deletedApis []int) error {
 		return nil
 	})
 	return err
-}
-
-func (r *Role) GetAll(skip, limit int, startTime, endTime string) ([]Role, error) {
-	tx := mysqlDB.DB
-	if startTime != "" && endTime != "" {
-		tx = tx.Where("createTime >= ? and createTime <=?", startTime, endTime)
-	}
-	var resDB []Role
-	res := tx.Limit(limit).Offset(skip).Find(&resDB)
-	if res.Error != nil {
-		return nil, res.Error
-	}
-	return resDB, nil
 }
 
 // 查看是否存在

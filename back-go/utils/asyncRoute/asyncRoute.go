@@ -1,10 +1,16 @@
 package asyncRoute
 
 import (
-	"github.com/gin-gonic/gin"
-	"net/http"
 	"reflect"
+
+	"github.com/gin-gonic/gin"
 )
+
+type webTask func()
+
+func (t webTask) Do() {
+	t()
+}
 
 // 二次封装routes树
 func WarpHandle(fn interface{}) gin.HandlerFunc {
@@ -23,14 +29,15 @@ func transBegin(c *gin.Context, fn interface{}) {
 	route := getCurrentRoute(c)
 	wait := newWaitConn(c, route)
 	if err := GinTaskQueue.SubmitTask(webTask(func() {
-		val.Call(append([]reflect.Value{reflect.ValueOf(wait)}))
+		val.Call([]reflect.Value{reflect.ValueOf(wait)})
 	})); err != nil {
-		wait.SetResult("访问人数过多", "too many requests", http.StatusTooManyRequests, nil)
+		wait.SetTooManyResponse(err)
 		wait.Done()
 		return
 	}
 	wait.Wait()
-	c.JSON(wait.result.Code, wait.result)
+	c.JSON(wait.HttpCode, wait.result)
+
 }
 
 // ctx.FullPath() 会返回当前 gin.Context 对象中的请求路径，

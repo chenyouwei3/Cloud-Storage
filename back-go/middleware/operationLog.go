@@ -1,60 +1,86 @@
 package middleware
 
 import (
+	"bytes"
+	"encoding/json"
 	"gin-web/initialize/mysql"
 	"gin-web/initialize/runLog"
 	"gin-web/models"
-	"github.com/gin-gonic/gin"
 	"io"
-	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
-// 第一个参数是项目的前缀请求
-// 第二个是需要过敏处理的参数
-// 第三个是数据库连接
+// 日志协程需要的通道
+var operationLogChan = make(chan models.OperationLog, 10)
 
-func OperationLog(target string, targets []string) gin.HandlerFunc {
+var (
+	skipMap = map[string]struct{}{ //跳过日志记录
+	}
+	targetMap = map[string]struct{}{ //数据脱敏
+		"/login": {}}
+)
+
+func OperationLog() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		//请求链路
-		linkStartTime := time.Now() // 记录请求开始时间
-		c.Next()
-		linkEndTime := time.Now()                           // 记录请求结束时间
-		costTime := linkEndTime.Sub(linkStartTime).String() // 计算请求处理时间
-		//响应区间
-		Path, startTime := c.Request.URL.Path, time.Now()
-		if !strings.HasPrefix(Path, target) || c.Request.Method == "GET" { //不存在的api不记录且GET方法不记录
+		startTime, Path := time.Now(), c.Request.URL.Path //请求链路---记录请求开始时间
+		//不存在的api不记录且GET方法不记录
+		if _, skipOK := skipMap[Path]; skipOK || c.Request.Method == "GET" {
 			return
 		}
-		body, err := io.ReadAll(c.Request.Body)
+		bodyBytes, err := io.ReadAll(c.Request.Body)
 		if err != nil {
-			runLog.ZapLog.Info("JSON deserialization failed")
+			runLog.ZapLog.Warn("读取请求体失败:", zap.Error(err))
+		} else {
+			c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes)) // 重置
 		}
-		username, _ := c.Get("user")
+		c.Next()
+		costTime := time.Now().Sub(startTime).String() // 计算请求处理时间
 		operationLog := models.OperationLog{
-			Username:  username.(string),
 			Ip:        c.ClientIP(),
 			Method:    c.Request.Method,
 			Status:    c.Writer.Status(),
 			Query:     c.Request.URL.RawQuery,
-			Body:      string(body),
+			Body:      string(bodyBytes),
 			Path:      Path,
-			StartTime: startTime,
+			StartTime: time.Now(),
 			UserAgent: c.Request.UserAgent(),
 			CostTime:  costTime,
 		}
-		//脱敏处理
-		for _, target := range targets {
-			if Path == target {
-				operationLog.Body, operationLog.Query = "***敏感信息已脱敏***", "***敏感信息已脱敏***"
+		//login情况特殊处理
+		if Path == "/login" {
+			var login struct {
+				Account  string `json:"account"`
+				Password string `json:"password"`
+			}
+			err = json.Unmarshal(bodyBytes, &login)
+			if err != nil {
+				runLog.ZapLog.Error("日志中间件解码失败")
+			}
+			operationLog.Account = login.Account
+		} else {
+			operationLog.Account = "login.Account"
+		}
+		if _, ok := targetMap[Path]; ok {
+			operationLog.Body, operationLog.Query = "***敏感信息已脱敏***", "***敏感信息已脱敏***"
+		}
+		select {
+		case operationLogChan <- operationLog:
+		default:
+			runLog.ZapLog.Warn("日志通道已满，日志被丢弃")
+		}
+	}
+}
+
+// 缓存处理
+func InitOperationLogWorker() {
+	go func() {
+		for log := range operationLogChan {
+			if err := mysql.DB.Create(&log).Error; err != nil {
+				runLog.ZapLog.Error("日志写入失败:" + err.Error())
 			}
 		}
-		//可以根据需求自行修改
-		go func() {
-			err = mysql.DB.Create(&operationLog).Error
-			if err != nil {
-				runLog.ZapLog.Error(err.Error())
-			}
-		}()
-	}
+	}()
 }

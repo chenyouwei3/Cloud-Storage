@@ -5,6 +5,9 @@ import (
 	"gin-web/initialize/config"
 	mysqlDB "gin-web/initialize/mysql"
 	"gin-web/initialize/runLog"
+	"gin-web/middleware"
+	"gin-web/models"
+	"gin-web/models/authcCenter"
 	"gin-web/routers"
 	"github.com/gin-gonic/gin"
 	_ "net/http/pprof"
@@ -33,16 +36,12 @@ func init() {
 		panic(err)
 	}
 	//数据库迁移
-	//if err = mysqlDB.DB.AutoMigrate(&authcCenter.User{}, &authcCenter.Role{}, &authcCenter.Api{}, &models.OperationLog{}); err != nil {
-	//	panic(err)
-	//}
-	//file.LoadFilePath(config.Conf.APP.FilePath)
+	if err = mysqlDB.DB.AutoMigrate(&authcCenter.User{}, &authcCenter.Role{}, &authcCenter.Api{}, &models.OperationLog{}); err != nil {
+		panic(err)
+	}
+	middleware.InitOperationLogWorker()
 }
 
 func main() {
 	routers.RouterServer() //http服务
-	//err := dist_storage.RenameFileOrDir("../cloud/外文翻译.pdf", "../cloud/翻译.pdf")
-	//if err != nil {
-	//	fmt.Println("错误:", err)
-	//}
 }

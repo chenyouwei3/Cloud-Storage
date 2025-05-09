@@ -3,11 +3,9 @@ APP:
   ip: 127.0.0.1
   port: 8080
   mode: run   #运行模式
-  webIndex:   # web html目录
-  filePath: "../cloud"  #文件存放目录
-  staticFS:   #开启静态资源浏览，路径 /static。
-  saveFileMultiple: true                 # 文件是否保存为多份
-  fileDiskTotal: 50                   # 配置的网盘容量，单位 M
+  webIndex: "../initialize/dist"      # web html目录
+  filePath: "cloud"  #文件存放目录
+  staticFS: false  #是否开静态资源访问
 
 
 MySQL:

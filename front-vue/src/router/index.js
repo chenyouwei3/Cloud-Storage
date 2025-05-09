@@ -4,16 +4,7 @@ const routes = [
 	//默认目录
 	{
 		path:'/',
-		redirect:'/cloud_storage/login'
-	},
-	//页面路由
-	{
-		name:"login",
-		path:"/cloud_storage/login",
-		meta:{
-			title:"账号登录"
-		},
-		component: () => import("@/views/login.vue")
+		redirect:'/login'
 	},
 	{
 		name:"404",
@@ -21,7 +12,16 @@ const routes = [
 		meta:{
 			title:"404"
 		},
-		component: () => import("@/views/404.vue")
+		component: () => import("@/views/default/404.vue")
+	},
+	/*---------------------首页---------------------*/
+	{
+		name:"login",
+		path:"/login",
+		meta:{
+			title:"账号登录"
+		},
+		component: () => import("@/views/login.vue")
 	},
 	{
 		name:"help-center",
@@ -29,7 +29,7 @@ const routes = [
 		meta:{
 			title:"帮助中心"
 		},
-		component: () => import("@/views/help-center.vue")
+		component: () => import("@/views/help-center/help-center.vue")
 	},
 	{
 		name:"privacy-policy",
@@ -37,7 +37,7 @@ const routes = [
 		meta:{
 			title:"隐私政策"
 		},
-		component: () => import("@/views/privacy-policy.vue")
+		component: () => import("@/views/help-center/privacy-policy.vue")
 	},
 	{
 		name:"terms-of-service",
@@ -45,23 +45,59 @@ const routes = [
 		meta:{
 			title:"服务条款"
 		},
-		component: () => import("@/views/terms-of-service.vue")
+		component: () => import("@/views/help-center/terms-of-service.vue")
 	},
+	/*---------------------功能页面---------------------*/
+	//网盘页面
 	{
-		name:"filecloud",
-		path:"/filecloud",
+		name:"file-cloud",
+		path:"/file-cloud",
 		meta:{
 			title:"个人网盘"
 		},
-		component: () => import("@/views/filecloud.vue")
+		component: () => import("@/views/file/cloud.vue")
 	},
 	{
-		name:"visualization",
-		path:"/visualization",
+		name:"file-visualization",
+		path:"/file-visualization",
 		meta:{
 			title:"数据可视化"
 		},
-		component: () => import("@/views/visualization.vue")
+		component: () => import('@/views/file/visualization.vue')
+	},
+	//日志中心
+	{
+		name:"log-operation",
+		path:"/log-operation",
+		meta:{
+			title:"操作日志"
+		},
+		component: () => import('@/views/log-center/operation.vue')
+	},
+	//权限中心
+	{
+		name:"api-center",
+		path:"/api-center",
+		meta:{
+			title:"API管理"
+		},
+		component: () => import('@/views/auth-center/api.vue')
+	},
+	{
+		name:"role-center",
+		path:"/role-center",
+		meta:{
+			title:"角色管理"
+		},
+		component: () => import('@/views/auth-center/role.vue')
+	},
+	{
+		name:"user-center",
+		path:"/user-center",
+		meta:{
+			title:"用户管理"
+		},
+		component: () => import('@/views/auth-center/user.vue')
 	},
 	// 捕获所有未匹配的路由，重定向到 404 页面
 	{

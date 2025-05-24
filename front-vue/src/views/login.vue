@@ -103,6 +103,29 @@
           <!-- 短信登录表单 -->
           <div v-show="activeTab === 'sms'" class="login-form">
             <a-form ref="smsFormModel" :model="smsInfo" :rules="smsRules">
+             <a-form-item name="name">
+                <a-input 
+                  size="large" 
+                  v-model:value="smsInfo.name" 
+                  placeholder="请输入用户名" 
+                  class="custom-input"
+                >
+                  <template #prefix>
+                    <UserOutlined class="input-icon" />
+                  </template>
+                </a-input>
+              </a-form-item>
+              <a-form-item name="sex">
+                <a-select 
+                  size="large" 
+                  v-model:value="smsInfo.sex" 
+                  placeholder="请选择性别" 
+                  class="custom-input"
+                >
+                  <a-select-option value="男">男</a-select-option>
+                  <a-select-option value="女">女</a-select-option>
+                </a-select>
+              </a-form-item>
               <a-form-item name="email">
                 <a-input 
                   size="large" 
@@ -142,7 +165,6 @@
                   </template>
                 </a-input-password>
               </a-form-item>
-
               <a-form-item>
                 <a-button 
                   type="primary" 
@@ -212,12 +234,11 @@
 <script setup>
 import storage from 'store'   
 import { login, register } from '@/tools/api'; 
-import { msgSuccess,msgError } from '@/tools/message';
+import {msgError } from '@/tools/message';
 import { UserOutlined, LockOutlined, WechatOutlined, QqOutlined,MobileOutlined,SafetyOutlined,MailOutlined,TwitterOutlined,InstagramOutlined,GoogleOutlined,FacebookOutlined,GithubOutlined} from '@ant-design/icons-vue';   
 import { ref } from 'vue';  
 import { useRouter } from 'vue-router'
 const activeTab = ref('password');
-
 /*--------------------------------- 全局变量 ---------------------------------*/
 const router = useRouter()
 // 表单验证规则
@@ -243,55 +264,62 @@ const smsRules = {
     }
   ]
 }
-/* [处理注册]
-@handleRegister 注册
-*/
+/* [处理注册]*/
 const smsFormModel = ref(null);// 表单引用
-const smsInfo = ref({email: "",password: "",confirmPassword: ""})//注册信息
+const smsInfo = ref({email: "",password: "",confirmPassword: "",name: "",sex: "男"})//注册信息
 const loadingLogin = ref(false);// 登录请求加载状态
 
 const handleRegister = async () => {
+  if (!smsInfo.value.email || !smsInfo.value.password || !smsInfo.value.confirmPassword || !smsInfo.value.name || !smsInfo.value.sex) {
+    msgError('请填写完整信息')
+    return
+  }
+  if (smsInfo.value.password !== smsInfo.value.confirmPassword) {
+    msgError('两次密码不一致')
+    return
+  }
   try {
-    await smsFormModel.value.validate();  // 校验表单
     loadingLogin.value = true;
-    const { email, password } = smsInfo.value;
-    const registerData = {
-      user: {name: email.split('@')[0], // 使用邮箱前缀作为用户名
-        account: email,
-        password: password,
-        email: email,
-        desc: "通过邮箱注册的用户"
-      },
-      addRoles: [2],
-      deletedRoles: []
-    };
-    const res=await register(registerData);   // 发起注册请求
+    const userRequest = {
+    user: {
+      account: smsInfo.value.email.split('@')[0],
+      password: smsInfo.value.password,
+      name: smsInfo.value.name,
+      sex: smsInfo.value.sex,
+      email: smsInfo.value.email,
+      desc: "通过邮箱注册的用户"
+    },
+    addRoles: [3],        // 要添加的角色 ID 数组
+    deletedRoles: []        // 要删除的角色 ID 数组
+};
+
+    const res = await register(userRequest);
     if (res?.data?.message['en-US']=="success"){
       setTimeout(() => {   // 延迟跳转
         activeTab.value = 'password';  //切换代码框
         smsInfo.value = {
           email: "",
           password: "",
-          confirmPassword: ""
-        };}, 1000);
+          confirmPassword: "",
+          name: "",
+          account: "",
+          sex: "男"
+        };}, 500);
     }  
   } finally {
     loadingLogin.value = false;
   }
 };
 
-/* [登录]
-@handleLogin 登录页面
-*/
+/* [登录]*/
 const loginFormModel = ref(null);// 表单引用
 const loginInfo = ref({account: "",password: ""})//初始化用户信息
-
 const handleLogin = async () => {
   try {
     await loginFormModel.value.validate();
     loadingLogin.value = true;
     const ret = await login(loginInfo.value);
-    storage.set("Access-Token", ret.data.token, 8 * 60 * 60 * 1000);
+    storage.set("Access-Token", ret.data.data.token, 8 * 60 * 60 * 1000);
     storage.set("User-Info", {name: ret.data.data.user.name,account: ret.data.data.user.account}, 8 * 60 * 60 * 1000);
     setTimeout(() => {
       loadingLogin.value = false;

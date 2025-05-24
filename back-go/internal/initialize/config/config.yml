@@ -1,0 +1,16 @@
+APP:
+  name: exchange   #服务名称
+  ip: 127.0.0.1
+  port: 8080
+  mode: run   #运行模式
+  staticFS: true  #是否开静态资源访问
+
+
+MySQL:
+  driverName: mysql
+  host: 106.12.19.43
+  port: 6446
+  database: web_bucked
+  username: root
+  password: root
+  charset: utf8mb4

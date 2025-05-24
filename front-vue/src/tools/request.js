@@ -4,7 +4,7 @@ import { msgSuccess,msgError } from './message';
 import { VueAxios } from './axios'; 
 // 创建 axios 实例
 const request = axios.create({
-  baseURL: "http://localhost:8080", // 正确的 API 地址
+  baseURL: window.location.protocol + "//" + window.location.host, // 使用当前域名和端口
   timeout: 5000, //请求超时时间
 });
 
@@ -27,8 +27,6 @@ const errorHandler = (error) => {
   }
   return Promise.reject(error); // 返回拒绝的 promise
 };
-
-
 
 // 请求拦截器
 request.interceptors.request.use(

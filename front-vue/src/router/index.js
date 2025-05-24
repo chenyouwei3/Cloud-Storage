@@ -99,6 +99,15 @@ const routes = [
 		},
 		component: () => import('@/views/auth-center/user.vue')
 	},
+	{
+		name:"file-test",
+		path:"/file-test",
+		meta:{
+			title:"个人网盘"
+		},
+		component: () => import("@/views/file/statistics.vue")
+	},
+	
 	// 捕获所有未匹配的路由，重定向到 404 页面
 	{
 		path: "/:pathMatch(.*)*",

@@ -1,2 +1,3 @@
 npm run build
-mv ./dist ../back-go/initialize/
+rm -rf ../back-go/internal/dist
+mv ./dist ../back-go/internal/

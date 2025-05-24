@@ -1,16 +1,20 @@
-# 忽略 back-go 下的 test0.go、batest1.go 和 data_init.go
-/back-go/test0.go
-/back-go/batest1.go
-/back-go/data_init.go
+# =============================================
+# Frontend (Vue) - 前端项目忽略文件
+# =============================================
+/front-vue/node_modules    # npm/yarn 依赖包目录
+/front-vue/dist           # 生产环境构建输出目录
+/front-vue/dist-ssr       # SSR 构建输出目录
+/front-vue/*.local        # 本地环境配置文件
+/front-vue/.vite          # Vite 构建工具缓存目录
+/front-vue/coverage       # 测试覆盖率报告目录
 
-# 忽略 back-go/initialize/config 目录下的 config.yaml
-/back-go/initialize/config/config.yaml
-
-# 忽略 back-go/cloud 目录下的所有内容
-/back-go/cloud/
-
-# 忽略 back-go/logs 目录下的所有内容
 /back-go/logs/
+/back-go/internal/dist
 
-/front-vue/node_modules
-/front-vue/dist
+# =============================================
+#开发环境
+# =============================================
+/.idea/                   # JetBrains IDE 配置目录
+/.vscode/                 # Visual Studio Code 配置目录
+/cloud/
+/config.yaml

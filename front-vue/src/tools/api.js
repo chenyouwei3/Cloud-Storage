@@ -11,42 +11,123 @@ export function login(parameter){
 
 export function register(parameter){
     return request({
-        url: "/user/add",
+        url: "/user/insert",
         method: 'post',
         data:parameter
     })
 }
-
+//权限中心-api
 export function  apiList(parameter){
     const queryString = new URLSearchParams(parameter).toString(); 
     return request({
-        url: `/api/getAll?${queryString}`, 
+        url: `/api/getList?${queryString}`, 
         method: 'get',
     });
 }
 
+export function apiRemove (parameter) {
+    return request({
+        url: "/api/remove",
+        method: 'post',
+        data: parameter
+    })
+}
+export function apiInsert(parameter){
+    return request({
+        url: "/api/insert",
+        method: 'post',
+        data: parameter
+    })
+}
+
+export function apiEdit(parameter){
+    return request({
+        url: "/api/edit",
+        method: 'post',
+        data: parameter
+    })
+}
+//权限中心-role
 export function roleList(parameter){
     const queryString = new URLSearchParams(parameter).toString(); 
     return request({
-        url: `/role/getAll?${queryString}`, 
+        url: `/role/getList?${queryString}`, 
         method: 'get', 
     });
 }
+export function roleRemove (parameter) {
+    return request({
+        url: "/role/remove",
+        method: 'post',
+        data: parameter
+    })
+}
+export function roleInsert(parameter){
+    return request({
+        url: "/role/insert",
+        method: 'post',
+        data: parameter
+    })
+}
 
+export function roleEdit(parameter){
+    return request({
+        url: "/role/edit",
+        method: 'post',
+        data: parameter
+    })
+}
+
+export function getRoleByApis(roleId) {
+    return request({
+        url: `/role/getRoleByApis?id=${roleId}`,
+        method: 'get'
+    })
+}
+
+//权限中心-user
 export function userList(parameter){
     const queryString = new URLSearchParams(parameter).toString(); 
     return request({
-        url: `/user/getAll?${queryString}`, 
+        url: `/user/getList?${queryString}`, 
         method: 'get', 
     });
 }
+export function userRemove (parameter) {
+    return request({
+        url: "/user/remove",
+        method: 'post',
+        data: parameter
+    })
+}
+export function userInsert(parameter){
+    return request({
+        url: "/user/insert",
+        method: 'post',
+        data: parameter
+    })
+}
 
+export function userEdit(parameter){
+    return request({
+        url: "/user/edit",
+        method: 'post',
+        data: parameter
+    })
+}
 
-/*----------------------------------日志中心---------------------------------*/
+export function getUserByRoles(roleId) {
+    return request({
+        url: `/user/getUserByRoles?id=${roleId}`,
+        method: 'get'
+    })
+}
+
+//日志中心
 export function getOperationLog(parameter){
     const queryString = new URLSearchParams(parameter).toString();    // 将参数转换为查询字符串
     return request({
-        url: `/log/operation/getAll?${queryString}`,
+        url: `/log/operation/getList?${queryString}`,
         method: 'get'
     })
 }

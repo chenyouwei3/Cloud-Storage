@@ -23,6 +23,7 @@ Node.js v18.18.0
 ## 启动
 
 在internal/initialize/config当中配置config.yml格式如下
+
 ```yaml
 // FileName: config.yml
 APP:
@@ -46,6 +47,8 @@ MySQL:
 ## 部署
 
 进入front-vue过后运行build_dist.sh 过后进行打包
+
 后续进入back-go/cmd运行build_docker_image.sh打包成image进行运行
+
 可以根据需求运行clean_docker.sh清楚容器与镜像
 
